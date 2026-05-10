@@ -14,6 +14,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 import threading
 import os
+import re
 import numpy as np
 
 try:
@@ -226,7 +227,9 @@ class LockTab:
             tr = self.app.training_results
             br = tr.best_overall
 
-            if "file" in source.lower() and hasattr(self, "_ecg_file"):
+            if "file" in source.lower():
+                if not hasattr(self, "_ecg_file"):
+                    raise ValueError("Choose an ECG .csv or .npy file before scanning.")
                 path = self._ecg_file
                 if path.endswith(".npy"):
                     signal = np.load(path)
@@ -235,6 +238,14 @@ class LockTab:
                 if signal.ndim > 1:
                     signal = signal[:, 0]
                 fs = 1000.0
+                self.frame.after(0, lambda p=os.path.basename(path): self._log(f"File: {p}"))
+                file_patient = self._patient_from_filename(path)
+                trained_patients = {name.lower() for name in tr.subject_names}
+                if file_patient and file_patient.lower() not in trained_patients:
+                    msg = f"{file_patient} is not in trained patients."
+                    self.frame.after(0, lambda m=msg: self._log(m))
+                    self.frame.after(0, lambda: self._show_result("Unidentified", 0.0))
+                    return
             else:
                 # Demo: pick a subject's stored signal
                 names = tr.subject_names
@@ -252,6 +263,12 @@ class LockTab:
         except Exception as exc:
             msg = str(exc)
             self.frame.after(0, lambda m=msg: self._show_error(m))
+
+    def _patient_from_filename(self, path: str) -> str | None:
+        match = re.search(r"patient(\d+)", os.path.basename(path), flags=re.I)
+        if not match:
+            return None
+        return f"patient{int(match.group(1)):03d}"
 
     def _show_result(self, identity: str, confidence: float):
         self.progress_bar.stop()

@@ -20,6 +20,7 @@ from ml.classifiers import (
     RF_PARAM_GRID,
     SVMClassifier,
     SVM_PARAM_GRID,
+    fit_open_set_rejection,
     identify_subject,
 )
 from ml.ecg_preprocessing import preprocess_ecg
@@ -84,6 +85,7 @@ def train_all(
         clf = cls_type(**params)
         try:
             clf.train(X_train, y_train)
+            fit_open_set_rejection(clf, X_train, y_train)
             train_acc = clf.accuracy(X_train, y_train)
             test_acc = clf.accuracy(X_test, y_test)
         except Exception:

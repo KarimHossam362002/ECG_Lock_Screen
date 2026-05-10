@@ -93,6 +93,18 @@ class TrainingTab:
                     textvariable=self.n_subjects_var,
                     width=6, font=("Consolas", 10)).pack(anchor="w", padx=24)
 
+        tk.Label(left, text="Patient IDs (optional):",
+                 bg=BG_PANEL, fg=TEXT,
+                 font=("Consolas", 9, "bold")).pack(anchor="w", padx=16, pady=(12, 2))
+        self.patient_ids_var = tk.StringVar(value="")
+        tk.Entry(left, textvariable=self.patient_ids_var,
+                 bg="#21262d", fg=TEXT, insertbackground=TEXT,
+                 relief="flat", font=("Consolas", 8),
+                 width=28).pack(anchor="w", padx=24)
+        tk.Label(left, text="Example: 68,78,100,120,140",
+                 bg=BG_PANEL, fg=DIM,
+                 font=("Consolas", 7)).pack(anchor="w", padx=24, pady=(2, 0))
+
         # Test split
         tk.Label(left, text="Test Split:",
                  bg=BG_PANEL, fg=TEXT,
@@ -201,8 +213,18 @@ class TrainingTab:
             data_dir   = self.data_path_var.get()
             n_subjects = self.n_subjects_var.get()
             test_size  = self.split_var.get()
+            patient_ids_text = self.patient_ids_var.get().strip()
+            patient_ids = [
+                part.strip()
+                for part in patient_ids_text.replace(";", ",").split(",")
+                if part.strip()
+            ] or None
 
             self.frame.after(0, lambda: self._log("Preprocessing ECG signals …"))
+
+            if patient_ids:
+                ids_msg = f"Using selected PTB patients: {', '.join(patient_ids[:n_subjects])}"
+                self.frame.after(0, lambda m=ids_msg: self._log(m))
 
             datasets_by_wavelet = {}
             subject_names = None
@@ -218,7 +240,8 @@ class TrainingTab:
                     data_dir,
                     n_subjects=n_subjects,
                     wavelet=wavelet,
-                    test_size=test_size
+                    test_size=test_size,
+                    patient_ids=patient_ids,
                 )
                 datasets_by_wavelet[wavelet] = (X_train, X_test, y_train, y_test)
                 if subject_names is None:

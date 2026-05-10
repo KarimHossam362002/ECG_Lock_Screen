@@ -71,7 +71,24 @@ def _patient_folder_sort_key(dirname: str) -> int | float:
     return int(m.group(1)) if m else float("inf")
 
 
-def _collect_ptbdb_records(root: str, max_subjects: int) -> Tuple[List[str], List[Tuple[str, int]]]:
+def _normalize_patient_id(patient_id: str | int) -> str:
+    text = str(patient_id).strip()
+    if not text:
+        raise ValueError("Empty patient id.")
+    if text.lower().startswith("patient"):
+        digits = text[7:]
+    else:
+        digits = text
+    if not digits.isdigit():
+        raise ValueError(f"Invalid PTB patient id: {patient_id!r}")
+    return f"patient{int(digits):03d}"
+
+
+def _collect_ptbdb_records(
+    root: str,
+    max_subjects: int,
+    patient_ids: list[str | int] | None = None,
+) -> Tuple[List[str], List[Tuple[str, int]]]:
     dirs = sorted(
         [d for d in os.listdir(root)
          if os.path.isdir(os.path.join(root, d))],
@@ -81,7 +98,21 @@ def _collect_ptbdb_records(root: str, max_subjects: int) -> Tuple[List[str], Lis
     if not subject_dirs:
         raise ValueError(f"No PTB patient folders found under {root}")
 
-    picked = subject_dirs[: max(1, min(max_subjects, len(subject_dirs)))]
+    if patient_ids:
+        requested = [_normalize_patient_id(pid) for pid in patient_ids]
+        seen = set()
+        picked = []
+        for patient in requested:
+            if patient in seen:
+                continue
+            seen.add(patient)
+            patient_path = os.path.join(root, patient)
+            if not os.path.isdir(patient_path):
+                raise ValueError(f"Requested PTB patient folder was not found: {patient}")
+            picked.append(patient)
+        picked = picked[: max(1, min(max_subjects, len(picked)))]
+    else:
+        picked = subject_dirs[: max(1, min(max_subjects, len(subject_dirs)))]
     subject_names = picked
 
     records: List[Tuple[str, int]] = []
@@ -137,7 +168,8 @@ def _load_single_record(record_path: str, lead: int, use_ptb: bool) -> tuple[np.
 def load_ptb_dataset(data_dir: str,
                      n_subjects: int = N_SUBJECTS,
                      wavelet: str = "db4",
-                     test_size: float = TEST_SIZE):
+                     test_size: float = TEST_SIZE,
+                     patient_ids: list[str | int] | None = None):
     """
     Load PTB records, preprocess, extract wavelet features, and split.
 
@@ -162,7 +194,7 @@ def load_ptb_dataset(data_dir: str,
         use_real = True
 
     if use_real:
-        subject_names, all_records = _collect_ptbdb_records(root, n_subjects)
+        subject_names, all_records = _collect_ptbdb_records(root, n_subjects, patient_ids)
     else:
         n = max(1, min(n_subjects, 5))
         subject_names = [f"Subject_{i + 1}" for i in range(n)]

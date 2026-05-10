@@ -146,6 +146,8 @@ Other ECG sources:
 
 For this project, PTB records exported with `scripts/export_ptb_csv.py` are the best match because they come from the same subject identity dataset used during training.
 
+The Lock Screen also reads the `patient###` token from exported PTB CSV filenames. If a file such as `patient001_s0010_lead2.csv` is scanned while the model was trained on `patient068, patient078, patient100, patient120, patient140`, the app rejects it as `Unidentified` before displaying any subject photo.
+
 ## Methodology
 
 ### 1. Data Preparation
@@ -206,6 +208,8 @@ The Results tab reports training accuracy, testing accuracy, selected wavelet, a
 ### 5. Identification Rule
 
 The trained classifier predicts a subject label for each heartbeat segment. The final identity is accepted only if more than 80% of the segments vote for the same subject.
+
+For exported PTB CSV files, the app also checks whether the filename patient ID belongs to the trained subject list. A patient outside the training list is treated as an unknown person and rejected as `Unidentified`.
 
 ```text
 ECG signal
