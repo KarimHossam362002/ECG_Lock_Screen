@@ -13,7 +13,7 @@ The project was built for the HCI ECG-based authentication assignment. It uses t
   - baseline wander removal
   - Butterworth bandpass filtering
   - 50 Hz notch filtering
-  - R-peak detection
+  - NeuroKit R-peak detection with local peak refinement
   - heartbeat segmentation
 - Wavelet feature extraction using `db1`, `db2`, and `db4`.
 - Classifier comparison across:
@@ -171,7 +171,7 @@ Bandpass filtering
 Powerline notch filtering
   |
   v
-R-peak detection
+NeuroKit R-peak detection
   |
   v
 Heartbeat segmentation
@@ -231,5 +231,5 @@ Confidence >= 80% ?
 - `pywt` is imported from the `PyWavelets` package.
 - If `ModuleNotFoundError: No module named 'pywt'` appears, install requirements into the same Python interpreter used by your IDE.
 - If training is slow, reduce `MAX_RECORDS_PER_PATIENT` in `data/dataset_loader.py`.
+- R-peaks are detected with NeuroKit2 when installed, then refined to the dominant local ECG peak so the ECG Viewer markers sit on the tall R deflections.
 - Lead index `1` is used by default because it corresponds to Lead II in the PTB record layout.
-
