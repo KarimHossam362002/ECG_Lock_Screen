@@ -6,7 +6,9 @@ Subject Manager tab: assign a photo to each subject.
 
 import tkinter as tk
 from tkinter import ttk, filedialog
+import json
 import os
+import shutil
 
 BG       = "#0d1117"
 BG_PANEL = "#161b22"
@@ -22,6 +24,10 @@ except ImportError:
     PIL_OK = False
 
 THUMB = 100   # thumbnail size px
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PHOTO_DIR = os.path.join(PROJECT_ROOT, "subject_photos")
+PHOTO_MAP_FILE = os.path.join(PHOTO_DIR, "photos.json")
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".bmp", ".gif")
 
 
 class SubjectTab:
@@ -39,7 +45,7 @@ class SubjectTab:
                                                      padx=16, pady=(14, 2))
         tk.Label(self.frame,
                  text="Assign one photo per subject.  "
-                      "The photo is displayed on the Lock Screen when that subject is identified.",
+                      "Photos are displayed on the Lock Screen when subjects are identified.",
                  bg=BG, fg=DIM,
                  font=("Consolas", 8)).pack(anchor="w", padx=16)
         ttk.Separator(self.frame, orient="horizontal").pack(fill="x",
@@ -77,12 +83,17 @@ class SubjectTab:
         for w in self.inner.winfo_children():
             w.destroy()
         self._cards.clear()
+        self._load_photo_map()
+        self._auto_load_named_photos(subject_names)
 
         for i, name in enumerate(subject_names):
             card = self._make_card(self.inner, name, i)
             card["frame"].grid(row=i // 4, column=i % 4,
                                padx=10, pady=10, sticky="n")
             self._cards[name] = card
+            photo_path = self.app.subject_photos.get(name)
+            if photo_path:
+                self._set_card_photo(name, photo_path)
 
     def _make_card(self, parent, name: str, idx: int) -> dict:
         frame = tk.Frame(parent, bg=BG_PANEL, padx=10, pady=10,
@@ -135,15 +146,64 @@ class SubjectTab:
         )
         if not path:
             return
-        self.app.subject_photos[name] = path
-        path_var.set(os.path.basename(path))
+        saved_path = self._copy_photo_to_project(name, path)
+        self.app.subject_photos[name] = saved_path
+        self._save_photo_map()
+        path_var.set(os.path.basename(saved_path))
+        self._draw_photo(cv, saved_path)
 
-        if PIL_OK:
-            img   = Image.open(path).resize((THUMB, THUMB), Image.LANCZOS)
-            photo = ImageTk.PhotoImage(img)
-            cv.delete("all")
-            cv.create_image(0, 0, anchor="nw", image=photo)
-            cv._photo = photo   # prevent GC
+    def _copy_photo_to_project(self, name: str, source_path: str) -> str:
+        os.makedirs(PHOTO_DIR, exist_ok=True)
+        ext = os.path.splitext(source_path)[1].lower() or ".jpg"
+        dest = os.path.join(PHOTO_DIR, f"{name}{ext}")
+        shutil.copy2(source_path, dest)
+        return dest
+
+    def _load_photo_map(self):
+        os.makedirs(PHOTO_DIR, exist_ok=True)
+        if not os.path.isfile(PHOTO_MAP_FILE):
+            return
+        try:
+            with open(PHOTO_MAP_FILE, "r", encoding="utf-8") as f:
+                mapping = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return
+        for name, path in mapping.items():
+            if os.path.isfile(path):
+                self.app.subject_photos[name] = path
+
+    def _save_photo_map(self):
+        os.makedirs(PHOTO_DIR, exist_ok=True)
+        with open(PHOTO_MAP_FILE, "w", encoding="utf-8") as f:
+            json.dump(self.app.subject_photos, f, indent=2)
+
+    def _auto_load_named_photos(self, subject_names: list):
+        os.makedirs(PHOTO_DIR, exist_ok=True)
+        for name in subject_names:
+            if name in self.app.subject_photos and os.path.isfile(self.app.subject_photos[name]):
+                continue
+            for ext in IMAGE_EXTS:
+                candidate = os.path.join(PHOTO_DIR, f"{name}{ext}")
+                if os.path.isfile(candidate):
+                    self.app.subject_photos[name] = candidate
+                    break
+        self._save_photo_map()
+
+    def _set_card_photo(self, name: str, path: str):
+        card = self._cards.get(name)
+        if not card:
+            return
+        card["path_var"].set(os.path.basename(path))
+        self._draw_photo(card["canvas"], path)
+
+    def _draw_photo(self, cv: tk.Canvas, path: str):
+        if not PIL_OK or not os.path.isfile(path):
+            return
+        img = Image.open(path).resize((THUMB, THUMB), Image.LANCZOS)
+        photo = ImageTk.PhotoImage(img)
+        cv.delete("all")
+        cv.create_image(0, 0, anchor="nw", image=photo)
+        cv._photo = photo   # prevent GC
 
     # ── Called by app after training ──────────────────────────
 

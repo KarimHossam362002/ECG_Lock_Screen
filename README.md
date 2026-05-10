@@ -226,31 +226,6 @@ Confidence >= 80% ?
   +-- No: unidentified
 ```
 
-## Suggested Report Flowcharts
-
-Use these diagrams in the report:
-
-1. System overview: Dataset -> Preprocessing -> Segmentation -> Wavelet Features -> Classifier -> Photo Unlock.
-2. Preprocessing flow: Raw ECG -> Baseline Removal -> Bandpass -> Notch -> R-peaks -> Segments.
-3. Training flow: Select Subjects -> Train/Test Split -> Extract `db1/db2/db4` Features -> Train SVM/KNN/RF -> Compare Accuracy -> Select Best Model.
-4. Authentication flow: Load ECG -> Segment Beats -> Predict Segments -> Majority Vote -> Unlock or Reject.
-
-## Report Checklist
-
-Your report should include:
-
-- Project name and team members.
-- Dataset description and selected five PTB subjects.
-- Training/testing split details.
-- Preprocessing screenshots from the ECG Viewer tab.
-- Wavelet feature extraction description.
-- Classifier parameters.
-- Classification comparison table from the Results tab.
-- Lock Screen, Training, Results, ECG Viewer, and Subject Manager screenshots.
-- Authentication decision rule explanation.
-
-Do not include code samples in the report.
-
 ## Notes
 
 - `pywt` is imported from the `PyWavelets` package.
@@ -258,10 +233,3 @@ Do not include code samples in the report.
 - If training is slow, reduce `MAX_RECORDS_PER_PATIENT` in `data/dataset_loader.py`.
 - Lead index `1` is used by default because it corresponds to Lead II in the PTB record layout.
 
-## Team Members
-
-Add your team members here:
-
-- Name 1
-- Name 2
-- Name 3
